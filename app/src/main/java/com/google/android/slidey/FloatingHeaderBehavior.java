@@ -22,6 +22,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
 
 /**
  * Custom behavior to manage position and alpha of floating header, and to link movements of
@@ -35,15 +36,24 @@ public class FloatingHeaderBehavior extends CoordinatorLayout.Behavior {
   @Override
   public boolean onLayoutChild(
     @NonNull CoordinatorLayout parent, @NonNull View header, int layoutDirection) {
-    ViewGroup recyclerView = parent.findViewById(R.id.recycler_view);
-    header.setOnTouchListener((v, ev) -> recyclerView.dispatchTouchEvent(ev));
+    // Propagate touch events from the header to the bottom sheet so that dragging the header
+    // will also scroll the bottom sheet. We do this here instead of in the view so that this
+    // behavior can be self-contained.
+    for (int i = 0; i < parent.getChildCount(); i++) {
+      View view = parent.getChildAt(i);
+      if (layoutDependsOn(parent, header, parent.getChildAt(i))) {
+        header.setOnTouchListener((v, ev) -> view.dispatchTouchEvent(ev));
+      }
+    }
     return false;
   }
 
   @Override
   public boolean layoutDependsOn(
-    @NonNull CoordinatorLayout parent, @NonNull View child, @NonNull View dependency) {
-    return dependency.getId() == R.id.bottom_sheet;
+    @NonNull CoordinatorLayout parent, @NonNull View header, @NonNull View dependency) {
+    ViewGroup.LayoutParams params = dependency.getLayoutParams();
+    return params instanceof CoordinatorLayout.LayoutParams
+      && ((CoordinatorLayout.LayoutParams) params).getBehavior() instanceof BottomSheetBehavior;
   }
 
   @Override
